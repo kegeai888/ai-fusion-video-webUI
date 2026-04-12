@@ -1,0 +1,47 @@
+package com.stonewu.fusion.entity.storyboard;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.stonewu.fusion.common.BaseEntity;
+import lombok.*;
+
+/**
+ * 分镜集实体
+ * <p>
+ * 对应数据库表：afv_storyboard_episode
+ * 存储分镜脚本按集拆分后的每一集信息，每集可继续拆分为多个分镜场次。
+ */
+@TableName("afv_storyboard_episode")
+@Data
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class StoryboardEpisode extends BaseEntity {
+
+    /** 主键ID，自增 */
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    /** 所属分镜ID */
+    private Long storyboardId;
+
+    /** 集号（从1开始） */
+    private Integer episodeNumber;
+
+    /** 本集标题 */
+    private String title;
+
+    /** 本集梗概 */
+    private String synopsis;
+
+    /** 排列顺序 */
+    @Builder.Default
+    private Integer sortOrder = 0;
+
+    /** 状态：0-草稿 1-正常 */
+    @Builder.Default
+    private Integer status = 0;
+}

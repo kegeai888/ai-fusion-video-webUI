@@ -1,0 +1,230 @@
+package com.stonewu.fusion.service.asset;
+
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.stonewu.fusion.common.BusinessException;
+import com.stonewu.fusion.entity.asset.Asset;
+import com.stonewu.fusion.entity.asset.AssetItem;
+import com.stonewu.fusion.mapper.asset.AssetItemMapper;
+import com.stonewu.fusion.mapper.asset.AssetMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 资产服务
+ */
+@Service
+@RequiredArgsConstructor
+public class AssetService {
+
+    private final AssetMapper assetMapper;
+    private final AssetItemMapper assetItemMapper;
+
+    // ========== 资产 ==========
+
+    @Cacheable(value = "asset", key = "#id")
+    public Asset getById(Long id) {
+        Asset asset = assetMapper.selectById(id);
+        if (asset == null)
+            throw new BusinessException("资产不存在: " + id);
+        return asset;
+    }
+
+    public List<Asset> listByProject(Long projectId) {
+        return assetMapper.selectList(new LambdaQueryWrapper<Asset>()
+                .eq(Asset::getProjectId, projectId)
+                .orderByDesc(Asset::getCreateTime));
+    }
+
+    public List<Asset> listByProject(Long projectId, String type, String keyword) {
+        LambdaQueryWrapper<Asset> wrapper = new LambdaQueryWrapper<Asset>()
+                .eq(Asset::getProjectId, projectId)
+                .orderByDesc(Asset::getCreateTime);
+        if (type != null && !type.isEmpty()) {
+            wrapper.eq(Asset::getType, type);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            wrapper.like(Asset::getName, keyword.trim());
+        }
+        return assetMapper.selectList(wrapper);
+    }
+
+    public List<Map<String, Object>> listWithItemsByProject(Long projectId) {
+        List<Asset> assets = listByProject(projectId);
+        if (assets.isEmpty())
+            return List.of();
+
+        List<Long> assetIds = assets.stream().map(Asset::getId).collect(Collectors.toList());
+        List<AssetItem> allItems = assetItemMapper.selectList(new LambdaQueryWrapper<AssetItem>()
+                .in(AssetItem::getAssetId, assetIds)
+                .orderByAsc(AssetItem::getSortOrder));
+
+        Map<Long, List<AssetItem>> itemsMap = allItems.stream()
+                .collect(Collectors.groupingBy(AssetItem::getAssetId));
+
+        return assets.stream().map(asset -> {
+            Map<String, Object> map = BeanUtil.beanToMap(asset, false, true);
+            map.put("items", itemsMap.getOrDefault(asset.getId(), List.of()));
+            return map;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * 按用户分页查询资产（跨项目），支持可选的 projectId / type / keyword 过滤
+     */
+    public IPage<Asset> pageByUser(Long userId, Long projectId, String type, String keyword, int page, int size) {
+        LambdaQueryWrapper<Asset> wrapper = buildUserQueryWrapper(userId, projectId, type, keyword);
+        return assetMapper.selectPage(new Page<>(page, size), wrapper);
+    }
+
+    /**
+     * 统计当前用户各类型资产数量（按 projectId / keyword 过滤，不按 type 过滤）
+     * 返回 Map: type -> count
+     */
+    public Map<String, Long> countByUserGroupByType(Long userId, Long projectId, String keyword) {
+        LambdaQueryWrapper<Asset> wrapper = buildUserQueryWrapper(userId, projectId, null, keyword);
+        List<Asset> all = assetMapper.selectList(
+                wrapper.select(Asset::getType));
+        return all.stream().collect(
+                Collectors.groupingBy(Asset::getType, Collectors.counting()));
+    }
+
+    private LambdaQueryWrapper<Asset> buildUserQueryWrapper(Long userId, Long projectId, String type, String keyword) {
+        LambdaQueryWrapper<Asset> wrapper = new LambdaQueryWrapper<Asset>()
+                .eq(Asset::getUserId, userId)
+                .orderByDesc(Asset::getUpdateTime);
+        if (projectId != null) {
+            wrapper.eq(Asset::getProjectId, projectId);
+        }
+        if (StrUtil.isNotBlank(type)) {
+            wrapper.eq(Asset::getType, type);
+        }
+        if (StrUtil.isNotBlank(keyword)) {
+            wrapper.like(Asset::getName, keyword.trim());
+        }
+        return wrapper;
+    }
+
+    public List<Asset> listByOwner(Integer ownerType, Long ownerId, String type) {
+        LambdaQueryWrapper<Asset> wrapper = new LambdaQueryWrapper<Asset>()
+                .eq(Asset::getOwnerType, ownerType)
+                .eq(Asset::getOwnerId, ownerId)
+                .orderByDesc(Asset::getCreateTime);
+        if (type != null && !type.isEmpty()) {
+            wrapper.eq(Asset::getType, type);
+        }
+        return assetMapper.selectList(wrapper);
+    }
+
+    public Asset findByProjectTypeAndName(Long projectId, String type, String name) {
+        return assetMapper.selectOne(new LambdaQueryWrapper<Asset>()
+                .eq(Asset::getProjectId, projectId)
+                .eq(Asset::getType, type)
+                .eq(Asset::getName, name)
+                .last("LIMIT 1"));
+    }
+
+    @CacheEvict(value = { "asset", "assetItem" }, allEntries = true)
+    @Transactional
+    public Asset create(Asset asset) {
+        assetMapper.insert(asset);
+
+        // 自动创建初始子资产，名称使用主资产名称
+        AssetItem initialItem = AssetItem.builder()
+                .assetId(asset.getId())
+                .itemType("initial")
+                .name(asset.getName())
+                .sortOrder(0)
+                .sourceType(asset.getSourceType() != null ? asset.getSourceType() : 1)
+                .build();
+        assetItemMapper.insert(initialItem);
+
+        return asset;
+    }
+
+    @CacheEvict(value = "asset", allEntries = true)
+    @Transactional
+    public Asset update(Asset asset) {
+        getById(asset.getId());
+        assetMapper.updateById(asset);
+        return asset;
+    }
+
+    @CacheEvict(value = "asset", allEntries = true)
+    @Transactional
+    public void delete(Long id) {
+        assetMapper.deleteById(id);
+    }
+
+    // ========== 子资产 ==========
+
+    public AssetItem getItemById(Long id) {
+        AssetItem item = assetItemMapper.selectById(id);
+        if (item == null)
+            throw new BusinessException("子资产不存在: " + id);
+        return item;
+    }
+
+    @Cacheable(value = "assetItem", key = "'asset:' + #assetId")
+    public List<AssetItem> listItems(Long assetId) {
+        return assetItemMapper.selectList(new LambdaQueryWrapper<AssetItem>()
+                .eq(AssetItem::getAssetId, assetId)
+                .orderByAsc(AssetItem::getSortOrder));
+    }
+
+    @CacheEvict(value = { "assetItem", "asset" }, allEntries = true)
+    @Transactional
+    public AssetItem createItem(AssetItem item) {
+        assetItemMapper.insert(item);
+        syncCoverIfAbsent(item);
+        return item;
+    }
+
+    @CacheEvict(value = { "assetItem", "asset" }, allEntries = true)
+    @Transactional
+    public AssetItem updateItem(AssetItem item) {
+        AssetItem existing = assetItemMapper.selectById(item.getId());
+        if (existing == null)
+            throw new BusinessException("子资产不存在: " + item.getId());
+        assetItemMapper.updateById(item);
+        // 部分更新时 item 可能缺少 assetId/imageUrl，用 existing 补全
+        if (item.getAssetId() == null) {
+            item.setAssetId(existing.getAssetId());
+        }
+        if (item.getImageUrl() == null) {
+            item.setImageUrl(existing.getImageUrl());
+        }
+        syncCoverIfAbsent(item);
+        return item;
+    }
+
+    @CacheEvict(value = "assetItem", allEntries = true)
+    @Transactional
+    public void deleteItem(Long id) {
+        assetItemMapper.deleteById(id);
+    }
+
+    /**
+     * 子资产有图片且主资产无封面时，自动将子资产图片设为主资产封面
+     */
+    private void syncCoverIfAbsent(AssetItem item) {
+        if (StrUtil.isBlank(item.getImageUrl()) || item.getAssetId() == null) {
+            return;
+        }
+        Asset asset = assetMapper.selectById(item.getAssetId());
+        if (asset != null && StrUtil.isBlank(asset.getCoverUrl())) {
+            asset.setCoverUrl(item.getImageUrl());
+            assetMapper.updateById(asset);
+        }
+    }
+}

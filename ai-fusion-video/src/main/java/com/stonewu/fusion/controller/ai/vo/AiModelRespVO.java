@@ -1,0 +1,22 @@
+package com.stonewu.fusion.controller.ai.vo;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Schema(description = "AI模型响应")
+@Data
+public class AiModelRespVO {
+    private Long id;
+    private String name;
+    private String code;
+    private Integer modelType;
+    private String icon;
+    private String description;
+    private Integer sort;
+    private Integer status;
+    private String config;
+    private Boolean defaultModel;
+    private Long apiConfigId;
+    private LocalDateTime createTime;
+}

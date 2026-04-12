@@ -1,0 +1,102 @@
+package com.stonewu.fusion.service.team;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.stonewu.fusion.common.PageResult;
+import com.stonewu.fusion.common.BusinessException;
+import com.stonewu.fusion.entity.team.Team;
+import com.stonewu.fusion.entity.team.TeamMember;
+import com.stonewu.fusion.enums.team.TeamMemberRoleEnum;
+import com.stonewu.fusion.mapper.team.TeamMemberMapper;
+import com.stonewu.fusion.mapper.team.TeamMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class TeamService {
+
+    private final TeamMapper teamMapper;
+    private final TeamMemberMapper teamMemberMapper;
+
+    @Transactional
+    public Team createTeam(String name, String description, Long ownerUserId) {
+        Team team = Team.builder().name(name).description(description).ownerUserId(ownerUserId).status(1).build();
+        teamMapper.insert(team);
+        teamMemberMapper.insert(TeamMember.builder()
+                .teamId(team.getId()).userId(ownerUserId)
+                .role(TeamMemberRoleEnum.OWNER.getRole()).status(1).joinTime(LocalDateTime.now())
+                .build());
+        return team;
+    }
+
+    public Team getById(Long id) {
+        return teamMapper.selectById(id);
+    }
+
+    public PageResult<Team> getPage(String name, Integer status, int pageNo, int pageSize) {
+        LambdaQueryWrapper<Team> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(name != null, Team::getName, name)
+                .eq(status != null, Team::getStatus, status)
+                .orderByDesc(Team::getId);
+        return PageResult.of(teamMapper.selectPage(new Page<>(pageNo, pageSize), wrapper));
+    }
+
+    @Transactional
+    public void updateTeam(Long id, String name, String description, String logo, Integer status) {
+        Team team = teamMapper.selectById(id);
+        if (team == null) throw new BusinessException(404, "团队不存在");
+        if (name != null) team.setName(name);
+        if (description != null) team.setDescription(description);
+        if (logo != null) team.setLogo(logo);
+        if (status != null) team.setStatus(status);
+        teamMapper.updateById(team);
+    }
+
+    @Transactional
+    public void deleteTeam(Long id) {
+        teamMapper.deleteById(id);
+    }
+
+    @Transactional
+    public Long addMember(Long teamId, Long userId, Integer role) {
+        boolean exists = teamMemberMapper.exists(new LambdaQueryWrapper<TeamMember>()
+                .eq(TeamMember::getTeamId, teamId)
+                .eq(TeamMember::getUserId, userId));
+        if (exists) {
+            throw new BusinessException(400, "该用户已是团队成员");
+        }
+        TeamMember member = TeamMember.builder()
+                .teamId(teamId).userId(userId)
+                .role(role != null ? role : TeamMemberRoleEnum.MEMBER.getRole())
+                .status(1).joinTime(LocalDateTime.now())
+                .build();
+        teamMemberMapper.insert(member);
+        return member.getId();
+    }
+
+    @Transactional
+    public void removeMember(Long teamId, Long userId) {
+        teamMemberMapper.delete(new LambdaQueryWrapper<TeamMember>()
+                .eq(TeamMember::getTeamId, teamId)
+                .eq(TeamMember::getUserId, userId));
+    }
+
+    @Transactional
+    public void changeMemberRole(Long teamId, Long userId, Integer role) {
+        TeamMember member = teamMemberMapper.selectOne(new LambdaQueryWrapper<TeamMember>()
+                .eq(TeamMember::getTeamId, teamId)
+                .eq(TeamMember::getUserId, userId));
+        if (member == null) throw new BusinessException(404, "成员不存在");
+        member.setRole(role);
+        teamMemberMapper.updateById(member);
+    }
+
+    public List<TeamMember> getMemberList(Long teamId) {
+        return teamMemberMapper.selectList(new LambdaQueryWrapper<TeamMember>().eq(TeamMember::getTeamId, teamId));
+    }
+}

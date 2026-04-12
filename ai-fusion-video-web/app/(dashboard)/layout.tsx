@@ -1,0 +1,130 @@
+"use client";
+
+import { useEffect, useState, useMemo } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X } from "lucide-react";
+import { useAuthStore } from "@/lib/store/auth-store";
+import { AppHeader } from "@/components/dashboard/app-header";
+import { SidebarNav } from "@/components/dashboard/sidebar-nav";
+import { cn } from "@/lib/utils";
+import { LayoutContext, useLayoutState } from "@/lib/hooks/use-layout";
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
+  const [mounted, setMounted] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // 布局宽度控制：子页面通过 useFullWidth(condition) 驱动
+  const { fullWidth, setFullWidth } = useLayoutState();
+  const layoutCtx = useMemo(
+    () => ({ fullWidth, setFullWidth }),
+    [fullWidth, setFullWidth]
+  );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  // 运行时登出检测：用户主动登出后跳转到登录页
+  // 初始进入时的认证保护由 middleware 处理
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [mounted, isAuthenticated, router]);
+
+  const ready = mounted && isAuthenticated;
+
+  return (
+    <LayoutContext value={layoutCtx}>
+      <div className="h-screen overflow-hidden flex flex-col bg-background">
+        {/* 顶部浮动导航栏 */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
+          <AppHeader />
+        </motion.div>
+
+        {/* 侧边栏 + 主内容 */}
+        <motion.div
+          className="flex pt-20 flex-1 min-h-0"
+          initial={{ opacity: 0 }}
+          animate={ready ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+        >
+          {/* 桌面端：浮动侧边栏卡片 */}
+          {ready && (
+            <div className="lg:block shrink-0 w-80 px-4 pt-1 self-start">
+              <SidebarNav />
+            </div>
+          )}
+
+          {/* 移动端：浮动抽屉 */}
+          <AnimatePresence>
+            {ready && sidebarOpen && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 z-40 bg-white/40 backdrop-blur-sm lg:hidden"
+                  onClick={() => setSidebarOpen(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="fixed left-4 top-22 z-50 lg:hidden"
+                >
+                  <SidebarNav onNavigate={() => setSidebarOpen(false)} />
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
+          {/* 移动端菜单按钮 */}
+          {ready && (
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={cn(
+                "fixed left-3 bottom-4 z-60 lg:hidden",
+                "h-11 w-11 rounded-full flex items-center justify-center",
+                "bg-primary text-primary-foreground shadow-lg shadow-primary/20",
+                "hover:shadow-primary/30 hover:scale-105",
+                "active:scale-95 transition-all duration-200"
+              )}
+            >
+              {sidebarOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </button>
+          )}
+
+          {/* 主内容区 */}
+          <main className="flex-1 min-w-0 min-h-0 py-4 px-5 lg:px-8 overflow-auto">
+            <div className={cn("w-full h-full mx-auto transition-[max-width] duration-300 ease-in-out", fullWidth ? "max-w-full" : "max-w-7xl")}>
+              {ready ? children : null}
+            </div>
+          </main>
+        </motion.div>
+      </div>
+    </LayoutContext>
+  );
+}
