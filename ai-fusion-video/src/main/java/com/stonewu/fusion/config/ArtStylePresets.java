@@ -49,7 +49,7 @@ public class ArtStylePresets {
                 .key("anime_jp")
                 .name("日漫")
                 .description("日式赛璐璐动漫风格画面，平涂着色，清晰锐利描线，明亮柔和色调，精致手绘背景")
-                .imagePrompt("日式赛璐璐动漫风格，平涂着色，大而有神的眼睛，清晰锐利的轮廓线，柔和的环境光遮蔽阴影，鲜艳明亮的粉彩色调，精致手绘背景，网点纹理效果")
+                .imagePrompt("日式赛璐璐动漫风格，平涂着色，修长纤细的动漫体型，头身比约1:6，大而有神的眼睛占面部三分之一，清晰锐利的轮廓线，柔和的环境光遮蔽阴影，鲜艳明亮的粉彩色调，精致手绘背景，网点纹理效果")
                 .referenceImagePath("/art-styles/anime_jp.png")
                 .build());
 
@@ -57,7 +57,7 @@ public class ArtStylePresets {
                 .key("anime_cn")
                 .name("国漫")
                 .description("中国水墨动漫风格画面，流畅水墨笔触线条，泼墨粒子效果，朱红翠绿传统色调，高对比戏剧光影")
-                .imagePrompt("中国风动漫画面，流畅灵动的水墨笔触线条，大胆夸张的动作姿势，浓郁饱和的中国传统色调搭配朱红与翠绿，泼墨飞溅的粒子效果，高对比度戏剧性光影")
+                .imagePrompt("中国风动漫画面，流畅灵动的水墨笔触线条，大胆夸张的动作姿势，修长矫健的身体比例，浓郁饱和的中国传统色调搭配朱红与翠绿，泼墨飞溅的粒子效果，高对比度戏剧性光影")
                 .referenceImagePath("/art-styles/anime_cn.png")
                 .build());
 
