@@ -53,7 +53,7 @@ const assetItems: SidebarItem[] = [
 ];
 
 const settingsItems: SidebarItem[] = [
-  { key: "general", label: "通用设置", icon: Settings, href: "/settings", iconColor: "text-green-400" },
+  { key: "general", label: "通用设置", icon: Settings, href: "/settings/general", iconColor: "text-green-400" },
   { key: "profile", label: "个人设置", icon: Users, href: "/settings/profile", iconColor: "text-blue-400" },
   { key: "ai-models", label: "AI 模型", icon: Bot, href: "/settings/ai-models", iconColor: "text-purple-400" },
   { key: "storage", label: "存储配置", icon: HardDrive, href: "/settings/storage", iconColor: "text-orange-400" },
@@ -61,21 +61,25 @@ const settingsItems: SidebarItem[] = [
 
 // ========== 侧边栏组件 ==========
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+export function SidebarNav({ onNavigate, project: projectProp }: { onNavigate?: () => void; project?: Project | null }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const projectMatch = pathname.match(/^\/projects\/(\d+)/);
   const projectId = projectMatch ? Number(projectMatch[1]) : null;
-  const [project, setProject] = useState<Project | null>(null);
+  const [projectLocal, setProjectLocal] = useState<Project | null>(null);
+
+  // 若外部已传入 project，则不在组件内自行请求
+  const project = projectProp !== undefined ? projectProp : projectLocal;
 
   useEffect(() => {
+    if (projectProp !== undefined) return; // 由外部管理，跳过
     if (projectId) {
-      projectApi.get(projectId).then(setProject).catch(() => {});
+      projectApi.get(projectId).then(setProjectLocal).catch(() => {});
     } else {
-      setProject(null);
+      setProjectLocal(null);
     }
-  }, [projectId]);
+  }, [projectId, projectProp]);
 
   let items: SidebarItem[] = [];
   let sectionTitle = "";

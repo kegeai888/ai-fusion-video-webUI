@@ -61,13 +61,6 @@ export default function GeneralSettingsPage() {
     >
       {/* 标题 */}
       <motion.div variants={itemVariants} className="mb-8">
-        <button
-          onClick={() => router.push("/settings")}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          返回设置
-        </button>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">通用设置</h1>

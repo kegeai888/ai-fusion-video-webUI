@@ -6,6 +6,7 @@ import com.stonewu.fusion.common.PageResult;
 import com.stonewu.fusion.common.BusinessException;
 import com.stonewu.fusion.entity.ai.AiModel;
 import com.stonewu.fusion.mapper.ai.AiModelMapper;
+import com.stonewu.fusion.service.ai.agentscope.AgentScopeModelFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,8 @@ public class AiModelService {
 
     private final AiModelMapper aiModelMapper;
     private final ModelPresetService modelPresetService;
+    private final ChatModelFactory chatModelFactory;
+    private final AgentScopeModelFactory agentScopeModelFactory;
 
     @Transactional
     public Long createAiModel(AiModel aiModel) {
@@ -56,11 +59,15 @@ public class AiModelService {
         if (defaultModel != null) model.setDefaultModel(defaultModel);
         if (apiConfigId != null) model.setApiConfigId(apiConfigId);
         aiModelMapper.updateById(model);
+        chatModelFactory.evict(id);
+        agentScopeModelFactory.evict(id);
     }
 
     @Transactional
     public void deleteAiModel(Long id) {
         aiModelMapper.deleteById(id);
+        chatModelFactory.evict(id);
+        agentScopeModelFactory.evict(id);
     }
 
     public AiModel getById(Long id) {

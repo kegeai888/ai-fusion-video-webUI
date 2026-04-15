@@ -10,11 +10,13 @@ WORKDIR /build
 # 先复制 Maven Wrapper 和 pom.xml，利用 Docker 缓存加速依赖下载
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+# 兼容 Windows CRLF 行尾（即使不经过 Git checkout）
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
+RUN --mount=type=cache,target=/root/.m2 ./mvnw dependency:go-offline -B
 
 # 复制源码并打包
 COPY src/ src/
-RUN ./mvnw package -DskipTests -B
+RUN --mount=type=cache,target=/root/.m2 ./mvnw package -DskipTests -B
 
 # ---------- 阶段 2: 运行 ----------
 FROM eclipse-temurin:21-jre

@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { AppHeader } from "@/components/dashboard/app-header";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { cn } from "@/lib/utils";
+import { projectApi, type Project } from "@/lib/api/project";
 import { LayoutContext, useLayoutState } from "@/lib/hooks/use-layout";
 
 export default function DashboardLayout({
@@ -20,6 +21,7 @@ export default function DashboardLayout({
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
   // 布局宽度控制：子页面通过 useFullWidth(condition) 驱动
   const { fullWidth, setFullWidth } = useLayoutState();
@@ -34,6 +36,17 @@ export default function DashboardLayout({
 
   useEffect(() => {
     setSidebarOpen(false);
+  }, [pathname]);
+
+  // 在 layout 层统一请求 project 数据，供桌面/移动端 SidebarNav 共享
+  useEffect(() => {
+    const match = pathname.match(/^\/projects\/(\d+)/);
+    if (match) {
+      const id = Number(match[1]);
+      projectApi.get(id).then(setCurrentProject).catch(() => {});
+    } else {
+      setCurrentProject(null);
+    }
   }, [pathname]);
 
   // 运行时登出检测：用户主动登出后跳转到登录页
@@ -66,9 +79,10 @@ export default function DashboardLayout({
           transition={{ duration: 0.4, delay: 0.15 }}
         >
           {/* 桌面端：浮动侧边栏卡片 */}
+          {/* lg(1024px): ~240px card | xl(1280px): ~270px card | 2xl+(1440px): 300px card */}
           {ready && (
-            <div className="lg:block shrink-0 w-80 px-4 pt-1 self-start">
-              <SidebarNav />
+            <div className="hidden lg:block shrink-0 w-[clamp(272px,23vw,332px)] px-4 pt-1 self-start">
+              <SidebarNav project={currentProject} />
             </div>
           )}
 
@@ -89,9 +103,9 @@ export default function DashboardLayout({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="fixed left-4 top-22 z-50 lg:hidden"
+                  className="fixed left-4 top-22 z-50 lg:hidden w-[60vw] min-w-[200px] max-w-[300px]"
                 >
-                  <SidebarNav onNavigate={() => setSidebarOpen(false)} />
+                  <SidebarNav project={currentProject} onNavigate={() => setSidebarOpen(false)} />
                 </motion.div>
               </>
             )}

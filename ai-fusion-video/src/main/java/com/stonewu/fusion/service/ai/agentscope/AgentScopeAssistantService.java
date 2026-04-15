@@ -591,7 +591,7 @@ public class AgentScopeAssistantService {
         Toolkit toolkit = new Toolkit(ToolkitConfig.builder()
                 .parallel(true) // 并行执行多工具
                 .executionConfig(ExecutionConfig.builder()
-                        .timeout(Duration.ofMinutes(10))
+                        .timeout(Duration.ofMinutes(20))
                         .build())
                 .build());
 
@@ -650,7 +650,7 @@ public class AgentScopeAssistantService {
                     subToolkit = new Toolkit(ToolkitConfig.builder()
                             .parallel(true)
                             .executionConfig(ExecutionConfig.builder()
-                                    .timeout(Duration.ofMinutes(5))
+                                    .timeout(Duration.ofMinutes(20))
                                     .build())
                             .build());
                     for (ToolExecutor subTool : subTools) {

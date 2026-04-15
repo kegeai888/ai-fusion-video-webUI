@@ -125,7 +125,6 @@
   }
   html {
     @apply font-sans;
-    scrollbar-gutter: stable;
   }
 
   /* 全局滚动条 - 现代精致风格 */

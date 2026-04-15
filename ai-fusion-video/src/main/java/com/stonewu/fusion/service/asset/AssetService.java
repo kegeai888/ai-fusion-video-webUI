@@ -197,12 +197,15 @@ public class AssetService {
         if (existing == null)
             throw new BusinessException("子资产不存在: " + item.getId());
         assetItemMapper.updateById(item);
-        // 部分更新时 item 可能缺少 assetId/imageUrl，用 existing 补全
+        // 部分更新时 item 可能缺少 assetId/imageUrl/itemType，用 existing 补全
         if (item.getAssetId() == null) {
             item.setAssetId(existing.getAssetId());
         }
         if (item.getImageUrl() == null) {
             item.setImageUrl(existing.getImageUrl());
+        }
+        if (item.getItemType() == null) {
+            item.setItemType(existing.getItemType());
         }
         syncCoverIfAbsent(item);
         return item;
@@ -215,14 +218,22 @@ public class AssetService {
     }
 
     /**
-     * 子资产有图片且主资产无封面时，自动将子资产图片设为主资产封面
+     * 同步主资产封面：
+     * - initial 类型子资产：新增或更新图片时，始终同步为主资产封面
+     * - 其他类型子资产：仅在主资产无封面时自动填充
      */
     private void syncCoverIfAbsent(AssetItem item) {
         if (StrUtil.isBlank(item.getImageUrl()) || item.getAssetId() == null) {
             return;
         }
         Asset asset = assetMapper.selectById(item.getAssetId());
-        if (asset != null && StrUtil.isBlank(asset.getCoverUrl())) {
+        if (asset == null) {
+            return;
+        }
+        if ("initial".equals(item.getItemType())) {
+            asset.setCoverUrl(item.getImageUrl());
+            assetMapper.updateById(asset);
+        } else if (StrUtil.isBlank(asset.getCoverUrl())) {
             asset.setCoverUrl(item.getImageUrl());
             assetMapper.updateById(asset);
         }

@@ -23,6 +23,7 @@ export interface Project {
 export interface ProjectCreateReq {
   name: string;
   description?: string;
+  properties?: string;
 }
 
 // ========== API ==========

@@ -538,6 +538,7 @@ interface ConfigFieldDef {
   min?: number;
   max?: number;
   step?: number;
+  defaultValue?: number;
   placeholder?: string;
   hint?: string;
   presetOptions?: string[];
@@ -547,8 +548,8 @@ function getConfigFieldsByModelType(modelType: number): ConfigFieldDef[] {
   switch (modelType) {
     case 1:
       return [
-        { key: "temperature", label: "Temperature", type: "range", min: 0, max: 2, step: 0.1, hint: "控制输出随机性，值越高越随机" },
-        { key: "topP", label: "Top P", type: "range", min: 0, max: 1, step: 0.05, hint: "核心采样概率阈值" },
+        { key: "temperature", label: "Temperature", type: "range", min: 0, max: 2, step: 0.1, defaultValue: 0.7, hint: "控制输出随机性，值越高越随机" },
+        { key: "topP", label: "Top P", type: "range", min: 0, max: 1, step: 0.05, defaultValue: 1, hint: "核心采样概率阈值" },
         { key: "maxTokens", label: "Max Tokens", type: "number", min: 1, max: 1000000, step: 1, placeholder: "例如：4096", hint: "单次请求最大输出 token 数" },
       ];
     case 2:
@@ -717,7 +718,7 @@ function ModelConfigForm({
                                 min={field.min ?? 0}
                                 max={field.max ?? 1}
                                 step={field.step ?? 0.1}
-                                value={numValue !== undefined && !isNaN(numValue) ? numValue : field.min ?? 0}
+                                value={numValue !== undefined && !isNaN(numValue) ? numValue : field.defaultValue ?? field.min ?? 0}
                                 onChange={e => updateSimpleField(field.key, e.target.value)}
                                 className="flex-1 h-1.5 accent-primary cursor-pointer"
                               />

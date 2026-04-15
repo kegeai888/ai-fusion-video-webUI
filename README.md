@@ -1,12 +1,11 @@
-<h1 align="center">
-  <img src="assets/logo.png" alt="融光 Logo" width="42" style="vertical-align: middle;" />
-  融光
-</h1>
 <p align="center">
-  <strong>AI 驱动的智能视频创作平台</strong>
+  <img src="assets/logo.png" alt="融光 Logo" width="368" />
 </p>
 <p align="center">
-  从剧本创意到分镜生成，从 AI 绘图到视频合成
+  <strong>融光，基于 Agent 的智能视频创作平台</strong>
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.1.0-blue" alt="version" />
 </p>
 
 ---
@@ -28,6 +27,39 @@
 - **📦 素材管理** — 统一管理项目内的图片、视频等素材资源
 - **🤖 多模型支持** — 集成 OpenAI、Claude、Gemini、通义千问、DeepSeek、Ollama 等主流大模型
 
+https://github.com/user-attachments/assets/fe71cbb8-f9d9-4351-9a4c-cb8a0a6af7ba
+
+https://github.com/user-attachments/assets/2f1de26c-5cd5-4be3-ad2e-81be2edd6956
+
+https://github.com/user-attachments/assets/acd26ede-8b77-48c0-91dc-c80c5ed7ceca
+
+https://github.com/user-attachments/assets/79bdbe0e-33dc-4be3-8cec-b1383f0d2c6a
+
+https://github.com/user-attachments/assets/be99d4c1-dc09-4616-8fba-06cb959c84c8
+
+---
+
+## ✅ 已完成
+
+- [x] 用户认证与授权（注册 / 登录 / Token 刷新）
+- [x] 项目管理（创建 / 编辑 / 删除项目）
+- [x] 剧本管理（分集 / 分场景结构化编辑）
+- [x] AI 分镜生成（剧本 → 分镜自动拆解）
+- [x] AI 绘图（多引擎文生图 / 图生图）
+- [x] AI 视频生成（基于分镜描述和参考图）
+- [x] 素材管理（图片 / 视频统一管理）
+- [x] 多 AI 模型支持（OpenAI / Claude / Gemini / 通义千问 / DeepSeek / Ollama 等）
+- [x] 多存储后端（本地 / 阿里云 OSS / 腾讯 COS / MinIO 等 S3 兼容）
+- [x] Agent Pipeline 可视化流程
+- [x] 系统初始化向导
+
+## 🗺️ TODO
+
+- [ ] 团队管理（多用户协作、权限控制）
+- [ ] 全局智能 Agent（跨项目任务调度与自动化）
+- [ ] 适配更多 AI 提供者
+- [ ] 更智能的 Agent Pipeline 流程
+
 ---
 
 ## 🚀 快速开始
@@ -38,8 +70,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/Stonewuu/ai-fusion-video.git
-cd ai-fusion-video
+git clone https://github.com/Stonewuu/fusion-video-package.git
+cd fusion-video-package
 
 # 可选：复制并修改环境变量
 cp .env.example .env
@@ -48,7 +80,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-如果你希望从源码本地构建镜像：
+#### 如果你希望从源码本地构建镜像：
 
 ```bash
 docker compose -f docker-compose.build.yml up -d --build
@@ -63,7 +95,7 @@ docker compose -f docker-compose.build.yml up -d --build
 ```bash
 # 1. 启动 MySQL 和 Redis
 cd ai-fusion-video
-docker compose up -d
+docker compose -f docker-compose-middleware.yml up -d
 
 # 2. 启动后端
 ./mvnw spring-boot:run
@@ -117,6 +149,11 @@ AI 模型可在系统设置页面动态管理，支持以下提供商：
 支持通过系统设置页面配置 S3 兼容的对象存储（阿里云 OSS、腾讯 COS、MinIO 等），也支持本地文件存储。
 
 ---
+
+## 🙏 致谢
+
+- 感谢 [LinuxDo](https://linux.do) 论坛的支持
+- 感谢开源项目 [waoowaoo](https://github.com/saturndec/waoowaoo) 提供的剧本 UI 设计灵感
 
 ## 📄 License
 

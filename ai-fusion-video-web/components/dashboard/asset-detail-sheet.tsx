@@ -34,11 +34,13 @@ import {
   Link,
   Library,
 } from "lucide-react";
+import { usePipelineStore } from "@/lib/store/pipeline-store";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/api/client";
 import {
   assetApi,
   type Asset,
+  type AssetItem,
   type AssetWithItems,
   type FieldDef,
 } from "@/lib/api/asset";
@@ -263,13 +265,17 @@ function CoverSelectorDialog({
 // ========== 子资产编辑面板（滑入式） ==========
 function AssetItemEditPanel({
   item,
+  assetId,
   assetType,
+  projectId,
   onClose,
   onUpdated,
   onDeleted,
 }: {
   item: AssetItem;
+  assetId: number;
   assetType: string;
+  projectId: number;
   onClose: () => void;
   onUpdated: () => void;
   onDeleted: () => void;
@@ -456,7 +462,25 @@ function AssetItemEditPanel({
               上传
             </button>
             <button
-              onClick={() => { /* TODO: 接入 AI 生图 */ }}
+              onClick={() => {
+                const { addPipeline, setNotificationOpen } = usePipelineStore.getState();
+                addPipeline({
+                  label: `生成图片: ${item.name || '子资产'}`,
+                  projectId,
+                  request: {
+                    agentType: 'asset_image_gen',
+                    projectId,
+                    context: {
+                      selectedAssetIds: [assetId],
+                      selectedAssetItemIds: [item.id],
+                    },
+                  },
+                  onComplete: () => {
+                    onUpdated();
+                  },
+                });
+                setNotificationOpen(true);
+              }}
               className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg bg-white/15 text-white/90 hover:bg-white/25 backdrop-blur-sm transition-all text-[10px] font-medium"
               title="AI 生图"
             >
@@ -1337,7 +1361,9 @@ export default function AssetDetailPanel(props: Props) {
           <AssetItemEditPanel
             key={selectedItem.id}
             item={selectedItem}
+            assetId={asset.id}
             assetType={asset.type}
+            projectId={asset.projectId}
             onClose={() => setSelectedItem(null)}
             onUpdated={() => loadItems(asset.id)}
             onDeleted={() => {

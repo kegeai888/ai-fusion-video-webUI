@@ -21,6 +21,7 @@ import { useProject } from "../project-context";
 import { projectApi } from "@/lib/api/project";
 import { artStyleApi, uploadFile } from "@/lib/api/art-style";
 import type { ArtStylePreset } from "@/lib/api/art-style";
+import { storageConfigApi } from "@/lib/api/storage";
 import { resolveMediaUrl, http } from "@/lib/api/client";
 
 const containerVariants = {
@@ -156,6 +157,25 @@ export default function ProjectSettingsPage() {
     } finally {
       setUploading(false);
     }
+  }, []);
+
+  // 外网访问能力（site_base_url 或公有云存储）
+  const [hasExternalAccess, setHasExternalAccess] = useState(false);
+  const [hasStorage, setHasStorage] = useState(false);
+
+  // 加载存储 & 系统配置，判断外网访问能力
+  useEffect(() => {
+    storageConfigApi.list().then((configs) => {
+      setHasStorage(configs.length > 0);
+      const hasPublicStorage = configs.some((c) => c.type !== "local");
+      http.get<never, { configKey: string; configValue: string }[]>("/api/system/config")
+        .then((list) => {
+          const map: Record<string, string> = {};
+          list.forEach((c) => { map[c.configKey] = c.configValue || ""; });
+          setHasExternalAccess(hasPublicStorage || !!map.site_base_url);
+        })
+        .catch(console.error);
+    }).catch(console.error);
   }, []);
 
   // 上传预设参考图到存储（保存到全局系统配置）
@@ -372,27 +392,41 @@ export default function ProjectSettingsPage() {
                         <Check className="h-3 w-3" />
                         已上传至存储
                       </span>
+                    ) : hasExternalAccess ? (
+                      <span className="flex items-center gap-1 text-[10px] text-sky-500 font-medium">
+                        <Check className="h-3 w-3" />
+                        将通过外网地址提供给 AI
+                      </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[10px] text-amber-500 font-medium">
                         <AlertTriangle className="h-3 w-3" />
-                        仅本地可用
+                        未上传且未配置外网访问
                       </span>
                     )}
                   </div>
 
                   <div className="mt-2 space-y-2">
-                    {!isPresetRefAvailable && (
+                    {!isPresetRefAvailable && !hasExternalAccess && (
                       <p className="text-[10px] text-muted-foreground leading-relaxed">
-                        预设参考图存储在服务器本地，AI API 无法直接访问。
-                        请上传到对象存储以启用参考图生图功能。
+                        参考图未上传到存储桶且未配置外网访问，AI API 将无法访问参考图。
+                        建议上传到存储，或在<strong>系统设置 → 通用</strong>中配置外网访问地址。
+                      </p>
+                    )}
+                    {!isPresetRefAvailable && hasExternalAccess && (
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        已配置外网访问地址，AI 将通过该地址访问本地参考图。
+                        上传到存储可获得更稳定的访问效果。
                       </p>
                     )}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleUploadPresetImage(selectedPreset); }}
-                      disabled={uploadingPreset === selectedPreset.key}
+                      disabled={uploadingPreset === selectedPreset.key || !hasStorage}
+                      title={!hasStorage ? "请先在系统设置中配置存储" : undefined}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                        isPresetRefAvailable
+                        !hasStorage
+                          ? "opacity-50 cursor-not-allowed bg-muted/30 text-muted-foreground border border-border/30"
+                          : isPresetRefAvailable
                           ? "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/30 hover:text-foreground"
                           : "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
                       )}

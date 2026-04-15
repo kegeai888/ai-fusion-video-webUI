@@ -10,7 +10,7 @@
    - `referenceImageUrl`：风格参考图URL（注入 referenceImageUrls 首位）
    - 如果 `hasArtStyle` 为 false，使用"高质量精细画面"作为前缀
 3. `get_storyboard_scene_items(storyboardItemId=目标ID)` → 找 `isCurrentTarget=true` 的镜头为目标，前后镜头作上下文
-4. 收集资产参考图（见下方）
+4. 从目标镜头的 `characterRefs`、`propRefs`、`sceneRef` 中直接收集有 imageUrl 的资产参考图（见下方"资产参考图收集"）
 5. 编写 prompt（画风 description + 资产引用 + 动作 + 氛围 + 运镜）
 6. 首帧图：优先 `generatedImageUrl`，否则 `imageUrl`
 7. `generate_video(prompt, firstFrameImageUrl, referenceImageUrls, ratio, duration)`
@@ -18,13 +18,13 @@
 
 ## 资产参考图收集
 
-从目标镜头提取：
+`get_storyboard_scene_items` 返回的每个镜头已内联资产引用信息：
 
-- `characterIds`（JSON数组）→ 角色子资产ID
-- `propIds`（JSON数组）→ 道具子资产ID
-- `sceneAssetItemId`（数字）→ 场景子资产ID
+- `characterRefs`（数组）→ 角色子资产，每项含 `assetItemId`、`name`、`imageUrl`
+- `propRefs`（数组）→ 道具子资产，每项含 `assetItemId`、`name`、`imageUrl`
+- `sceneRef`（对象）→ 场景子资产，含 `assetItemId`、`name`、`imageUrl`
 
-用 `query_asset_items(assetIds=[...])` 批量查询，取有 imageUrl 的子资产。
+从目标镜头（`isCurrentTarget=true`）的这些字段中，收集有 imageUrl 的子资产作为参考图。
 
 排序：角色 → 道具 → 场景（有首帧图时省略场景）。最多 5 张，无图资产跳过。
 

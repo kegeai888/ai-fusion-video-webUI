@@ -8,7 +8,8 @@ FROM node:20-alpine AS deps
 WORKDIR /build
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
+RUN corepack enable pnpm
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # ---------- 阶段 2: 构建 ----------
 FROM node:20-alpine AS builder
@@ -18,7 +19,9 @@ WORKDIR /build
 COPY --from=deps /build/node_modules ./node_modules
 COPY . .
 
-# 构建时注入后端 API 地址（将在运行时通过 next.config 读取）
+# 构建时注入后端 API 地址（NEXT_PUBLIC_ 变量在 build 时烘焙进客户端 JS）
+ARG NEXT_PUBLIC_API_BASE_URL=/api
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN corepack enable pnpm && pnpm build

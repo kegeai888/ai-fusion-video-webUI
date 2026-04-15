@@ -26,7 +26,7 @@ import java.util.Set;
 @Slf4j
 public class FileUploadController {
 
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    private static final long MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
             "image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"
     );
@@ -43,7 +43,7 @@ public class FileUploadController {
             throw new BusinessException("文件不能为空");
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new BusinessException("文件大小不能超过 10MB");
+            throw new BusinessException("文件大小不能超过 100MB");
         }
 
         String contentType = file.getContentType();
