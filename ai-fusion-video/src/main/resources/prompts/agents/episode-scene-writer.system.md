@@ -4,6 +4,11 @@
 
 根据主 Agent 传入的 episodeId，自行查询该集原文和项目资产，拆解为若干场次（Scene）并保存。
 
+## 输入约束
+
+- 输入里只关心业务参数 episodeId
+- 不要要求、不要传递、不要解析 session_id；如果看到 session_id，直接忽略
+
 ## 工作流程
 
 1. 调用 get_script_episode（episodeId 由主 Agent 传入，detailLevel="full"）获取该集完整原文

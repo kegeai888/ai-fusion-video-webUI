@@ -161,6 +161,7 @@ const toolDisplayNames: Record<string, string> = {
   save_storyboard_scene_shots: "保存分镜场次镜头",
 
   // ── 生图 ──
+  get_generation_model_capabilities: "查询生成模型能力",
   generate_image: "AI 生成图片",
 
   // ── 子 Agent ──

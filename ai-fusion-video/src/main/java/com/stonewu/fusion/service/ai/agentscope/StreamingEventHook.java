@@ -140,13 +140,13 @@ public class StreamingEventHook implements Hook {
 
         Msg incrementalChunk = event.getIncrementalChunk();
         if (incrementalChunk == null) {
-            log.debug("[StreamingEventHook] 收到event: {}, agent={}, parentCallId={}, chunk=null",
-                    event.getClass().getSimpleName(), agentName, parentCallId);
+            // log.debug("[StreamingEventHook] 收到event: {}, agent={}, parentCallId={}, chunk=null",
+            //         event.getClass().getSimpleName(), agentName, parentCallId);
             return;
         }
 
-        log.debug("[StreamingEventHook] 收到event: {}, agent={}, parentCallId={}, textContent={}",
-                event.getClass().getSimpleName(), agentName, parentCallId, incrementalChunk.getTextContent());
+        // log.debug("[StreamingEventHook] 收到event: {}, agent={}, parentCallId={}, textContent={}",
+        //          event.getClass().getSimpleName(), agentName, parentCallId, incrementalChunk.getTextContent());
 
         for (ContentBlock block : incrementalChunk.getContent()) {
             if (block instanceof ThinkingBlock thinkingBlock) {

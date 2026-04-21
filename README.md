@@ -150,10 +150,17 @@ AI 模型可在系统设置页面动态管理，支持以下提供商：
 
 ---
 
+## ⭐ Star 趋势
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Stonewuu/ai-fusion-video&type=Date)](https://star-history.com/#Stonewuu/ai-fusion-video&Date)
+
+
 ## 🙏 致谢
 
 - 感谢 [LinuxDo](https://linux.do) 论坛的支持
 - 感谢开源项目 [waoowaoo](https://github.com/saturndec/waoowaoo) 提供的剧本 UI 设计灵感
+
+
 
 ## 📄 License
 

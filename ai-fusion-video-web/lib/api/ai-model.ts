@@ -73,6 +73,7 @@ export interface ModelPreset {
 export interface RemoteModel {
   id: string;
   ownedBy: string;
+  modelType?: number | null;
 }
 
 /** 分页结果 */
@@ -141,6 +142,7 @@ export const PLATFORM_OPTIONS = [
   { value: "openai_compatible", label: "OpenAI 兼容", description: "OpenAI / DeepSeek / 智谱 / 硅基流动等" },
   { value: "volcengine", label: "火山引擎（豆包）", description: "字节跳动火山引擎豆包大模型" },
   { value: "vertex_ai", label: "Google Vertex AI", description: "Google Cloud Vertex AI Gemini" },
+  { value: "GoogleFlowReverseApi", label: "Google Flow Reverse API", description: "Flow2API 反向代理，图片/视频 alias 模型" },
   { value: "dashscope", label: "阿里 DashScope", description: "阿里云通义千问系列" },
   { value: "anthropic", label: "Anthropic", description: "Claude 系列模型" },
   { value: "ollama", label: "Ollama", description: "本地部署的开源模型" },
@@ -175,6 +177,7 @@ export const PLATFORM_LABELS: Record<string, string> = {
   siliconflow: "硅基流动",
   vertex_ai: "Vertex AI",
   vertexai: "Vertex AI",
+  GoogleFlowReverseApi: "Google Flow Reverse API",
   gemini: "Gemini",
   dashscope: "DashScope",
   anthropic: "Anthropic",

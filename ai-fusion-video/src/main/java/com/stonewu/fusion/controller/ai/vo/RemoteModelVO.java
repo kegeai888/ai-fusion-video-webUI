@@ -19,4 +19,7 @@ public class RemoteModelVO {
 
     /** 模型拥有者 */
     private String ownedBy;
+
+    /** 模型类型：1-对话 2-图像生成 3-视频生成 */
+    private Integer modelType;
 }
