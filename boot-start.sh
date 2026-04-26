@@ -155,7 +155,7 @@ ensure_redis() {
 }
 
 check_backend() {
-  curl -fsS http://127.0.0.1:18080/swagger-ui.html >/dev/null
+  curl -fsS -o /dev/null -w "%{http_code}" http://127.0.0.1:18080/swagger-ui.html | grep -Eq '^(200|302|401)$'
 }
 
 check_frontend() {
