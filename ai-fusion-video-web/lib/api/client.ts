@@ -1,5 +1,9 @@
-import axios from "axios";
+import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import type { CommonResult } from "./types";
+
+interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
 
 // 后端基础地址（可通过环境变量 NEXT_PUBLIC_API_BASE_URL 覆盖）
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
@@ -48,11 +52,14 @@ function updateAuthStorage(accessToken: string, refreshToken: string) {
 function handleAuthFailure() {
   if (typeof window === "undefined") return;
   localStorage.removeItem("auth-storage");
-  // 清除 auth-token cookie
   document.cookie = "auth-token=; path=/; max-age=0";
   if (window.location.pathname !== "/login") {
     window.location.href = "/login";
   }
+}
+
+function isAuthEndpoint(url?: string) {
+  return typeof url === "string" && ["/auth/login", "/auth/refresh", "/auth/logout"].some((path) => url.endsWith(path));
 }
 
 // 请求拦截器：注入 access_token
@@ -92,15 +99,19 @@ http.interceptors.response.use(
     }
     return result.data as never;
   },
-  async (error) => {
+  async (error: AxiosError<CommonResult<unknown>>) => {
     if (axios.isCancel(error)) {
       return Promise.reject(error);
     }
 
-    const originalRequest = error.config;
+    const originalRequest = error.config as RetryableAxiosRequestConfig | undefined;
 
-    // 如果没有 config（例如网络错误），直接走通用错误处理
-    if (!originalRequest || error.response?.status !== 401) {
+    if (!originalRequest) {
+      const msg = error.message || "网络异常";
+      return Promise.reject(new Error(msg));
+    }
+
+    if (error.response?.status !== 401) {
       const msg =
         error.response?.data?.msg ||
         error.response?.statusText ||
@@ -109,21 +120,21 @@ http.interceptors.response.use(
       return Promise.reject(new Error(msg));
     }
 
-    // 已经是重试请求 → 不再重复刷新
+    if (isAuthEndpoint(originalRequest.url)) {
+      const msg = error.response?.data?.msg || "用户名或密码错误";
+      return Promise.reject(new Error(msg));
+    }
+
     if (originalRequest._retry) {
       handleAuthFailure();
       return Promise.reject(new Error("登录已过期，请重新登录"));
     }
 
-    // 如果正在刷新中，将请求排队等待
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       }).then((newToken) => {
-        originalRequest.headers = {
-          ...originalRequest.headers,
-          Authorization: `Bearer ${newToken}`,
-        };
+        originalRequest.headers.set("Authorization", `Bearer ${newToken}`);
         return http(originalRequest);
       });
     }
@@ -131,7 +142,6 @@ http.interceptors.response.use(
     const parsed = getAuthStorage();
     const storedRefreshToken = parsed?.state?.refreshToken;
 
-    // 没有 refresh_token → 直接清除状态跳登录页
     if (!storedRefreshToken) {
       handleAuthFailure();
       return Promise.reject(new Error("登录已过期，请重新登录"));
@@ -141,7 +151,6 @@ http.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // 调用刷新接口（直接用 axios 避免走拦截器死循环）
       const refreshResp = await axios.post(`${API_BASE_URL}/auth/refresh`, {
         refreshToken: storedRefreshToken,
       });
@@ -156,14 +165,9 @@ http.interceptors.response.use(
       }
 
       const { accessToken, refreshToken } = result.data;
-
-      // 更新 localStorage
       updateAuthStorage(accessToken, refreshToken);
-
-      // 同步更新 cookie（供 Next.js middleware 路由守卫使用）
       document.cookie = `auth-token=${accessToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
 
-      // 尝试更新 zustand store（如果已初始化）
       try {
         const { useAuthStore } = await import("@/lib/store/auth-store");
         useAuthStore.getState().setTokens(accessToken, refreshToken);
@@ -171,17 +175,11 @@ http.interceptors.response.use(
         // store 可能未初始化，localStorage 已更新所以问题不大
       }
 
-      // 处理等待队列
       processQueue(null, accessToken);
 
-      // 用新 token 重试原始请求
-      originalRequest.headers = {
-        ...originalRequest.headers,
-        Authorization: `Bearer ${accessToken}`,
-      };
+      originalRequest.headers.set("Authorization", `Bearer ${accessToken}`);
       return http(originalRequest);
     } catch (refreshError) {
-      // 刷新失败 → 清除认证状态，跳登录页
       processQueue(refreshError as Error, null);
       handleAuthFailure();
       return Promise.reject(new Error("登录已过期，请重新登录"));
