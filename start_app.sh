@@ -13,6 +13,65 @@ BACKEND_JAR="$BACKEND_DIR/target/ai-fusion-video-0.2.1.jar"
 BACKEND_SWAGGER_URL="http://127.0.0.1:$BACKEND_PORT/swagger-ui.html"
 FRONTEND_URL="http://127.0.0.1:$PORT"
 
+is_port_open() {
+  local port="$1"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+is_frontend_process() {
+  local args="$1"
+  echo "$args" | grep -Eq 'next-server|next dev|pnpm dev|node.*next|/next@|ai-fusion-video-web'
+}
+
+kill_matching_processes() {
+  local port="$1"
+
+  while read -r pid; do
+    PROC_NAME=$(ps -p "$pid" -o comm= 2>/dev/null || true)
+    if echo "$PROC_NAME" | grep -qi "jupyter"; then
+      echo "跳过 jupyterlab 进程 (PID: $pid)"
+      continue
+    fi
+    PROC_ARGS=$(ps -p "$pid" -o args= 2>/dev/null || true)
+    if is_frontend_process "$PROC_ARGS"; then
+      echo "终止进程 PID: $pid ($PROC_NAME)"
+      kill "$pid" 2>/dev/null || true
+    else
+      echo "跳过未知进程 PID: $pid ($PROC_NAME)"
+    fi
+  done < <(lsof -t -i:"$port" 2>/dev/null || true)
+}
+
+kill_process_tree() {
+  local pid="$1"
+  local signal="$2"
+  local child
+
+  while read -r child; do
+    [[ -n "$child" ]] || continue
+    kill_process_tree "$child" "$signal"
+  done < <(pgrep -P "$pid" || true)
+
+  kill "$signal" "$pid" 2>/dev/null || true
+}
+
+force_kill_matching_processes() {
+  local port="$1"
+
+  while read -r pid; do
+    PROC_NAME=$(ps -p "$pid" -o comm= 2>/dev/null || true)
+    PROC_ARGS=$(ps -p "$pid" -o args= 2>/dev/null || true)
+    if echo "$PROC_NAME" | grep -qi "jupyter"; then
+      echo "跳过 jupyterlab 进程 (PID: $pid)"
+      continue
+    fi
+    if is_frontend_process "$PROC_ARGS"; then
+      echo "强制终止进程树 PID: $pid ($PROC_NAME)"
+      kill_process_tree "$pid" -9
+    fi
+  done < <(lsof -t -i:"$port" 2>/dev/null || true)
+}
+
 wait_for_http() {
   local url="$1"
 
@@ -28,6 +87,23 @@ wait_for_http() {
   return 1
 }
 
+build_backend_env() {
+  BACKEND_ENV=(env)
+
+  if [[ -n "${SPRING_DATASOURCE_URL:-}" ]]; then
+    BACKEND_ENV+=("SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL")
+  fi
+  if [[ -n "${SPRING_DATA_REDIS_HOST:-}" ]]; then
+    BACKEND_ENV+=("SPRING_DATA_REDIS_HOST=$SPRING_DATA_REDIS_HOST")
+  fi
+  if [[ -n "${SPRING_DATA_REDIS_PORT:-}" ]]; then
+    BACKEND_ENV+=("SPRING_DATA_REDIS_PORT=$SPRING_DATA_REDIS_PORT")
+  fi
+  if [[ -n "${SPRING_DATA_REDIS_PASSWORD:-}" ]]; then
+    BACKEND_ENV+=("SPRING_DATA_REDIS_PASSWORD=$SPRING_DATA_REDIS_PASSWORD")
+  fi
+}
+
 echo "=========================================="
 echo "融光 AI 视频创作平台启动脚本"
 echo "前端端口: $PORT"
@@ -37,21 +113,31 @@ echo "=========================================="
 
 echo "[1/6] 清理前端端口 $PORT ..."
 rm -f "$FRONTEND_DIR/.next/dev/lock" 2>/dev/null || true
-while read -r pid; do
-  PROC_NAME=$(ps -p "$pid" -o comm= 2>/dev/null || true)
-  if echo "$PROC_NAME" | grep -qi "jupyter"; then
-    echo "跳过 jupyterlab 进程 (PID: $pid)"
-    continue
+kill_matching_processes "$PORT"
+
+for _ in $(seq 1 10); do
+  if ! is_port_open "$PORT"; then
+    break
   fi
-  PROC_ARGS=$(ps -p "$pid" -o args= 2>/dev/null || true)
-  if echo "$PROC_ARGS" | grep -q "$FRONTEND_DIR" || echo "$PROC_ARGS" | grep -Eq "next-server|next dev|pnpm dev|node.*next"; then
-    echo "终止进程 PID: $pid ($PROC_NAME)"
-    kill -9 "$pid" 2>/dev/null || true
-  else
-    echo "跳过未知进程 PID: $pid ($PROC_NAME)"
+  sleep 1
+done
+
+if is_port_open "$PORT"; then
+  force_kill_matching_processes "$PORT"
+fi
+
+for _ in $(seq 1 10); do
+  if ! is_port_open "$PORT"; then
+    break
   fi
-done < <(lsof -t -i:"$PORT" 2>/dev/null || true)
-sleep 2
+  sleep 1
+done
+
+if is_port_open "$PORT"; then
+  echo "前端端口 $PORT 仍被占用" >&2
+  exit 1
+fi
+
 echo "前端端口 $PORT 已清理"
 
 echo "[2/6] 清理后端端口 $BACKEND_PORT ..."
@@ -74,10 +160,11 @@ echo "后端端口 $BACKEND_PORT 已清理"
 
 echo "[3/6] 启动后端..."
 : > "$BACKEND_LOG"
+build_backend_env
 if [[ -f "$BACKEND_JAR" ]]; then
-  nohup env SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-}" SPRING_DATA_REDIS_HOST="${SPRING_DATA_REDIS_HOST:-}" SPRING_DATA_REDIS_PORT="${SPRING_DATA_REDIS_PORT:-}" SPRING_DATA_REDIS_PASSWORD="${SPRING_DATA_REDIS_PASSWORD:-123456}" bash -lc "cd '$BACKEND_DIR' && java -Xmx512m -jar '$BACKEND_JAR'" >"$BACKEND_LOG" 2>&1 &
+  nohup "${BACKEND_ENV[@]}" bash -lc "cd '$BACKEND_DIR' && java -Xmx512m -jar '$BACKEND_JAR'" >"$BACKEND_LOG" 2>&1 &
 else
-  nohup env SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-}" SPRING_DATA_REDIS_HOST="${SPRING_DATA_REDIS_HOST:-}" SPRING_DATA_REDIS_PORT="${SPRING_DATA_REDIS_PORT:-}" SPRING_DATA_REDIS_PASSWORD="${SPRING_DATA_REDIS_PASSWORD:-123456}" bash -lc "cd '$BACKEND_DIR' && ./mvnw spring-boot:run" >"$BACKEND_LOG" 2>&1 &
+  nohup "${BACKEND_ENV[@]}" bash -lc "cd '$BACKEND_DIR' && ./mvnw spring-boot:run" >"$BACKEND_LOG" 2>&1 &
 fi
 BACKEND_PID=$!
 echo "后端已启动 PID: $BACKEND_PID"
@@ -87,6 +174,15 @@ echo "[4/6] 启动前端..."
 nohup env PORT="$PORT" NEXT_PUBLIC_API_BASE_URL="/api" BACKEND_API_BASE_URL="http://localhost:$BACKEND_PORT/api" bash -lc "cd '$FRONTEND_DIR' && pnpm dev --hostname 0.0.0.0 --port '$PORT'" >"$FRONTEND_LOG" 2>&1 &
 FRONTEND_PID=$!
 echo "前端已启动 PID: $FRONTEND_PID"
+
+for _ in $(seq 1 10); do
+  if ps -p "$FRONTEND_PID" >/dev/null 2>&1; then
+    sleep 1
+    continue
+  fi
+  echo "前端进程已提前退出，检查日志: $FRONTEND_LOG" >&2
+  exit 1
+done
 
 echo "[5/6] 等待服务就绪..."
 wait_for_http "$BACKEND_SWAGGER_URL"
