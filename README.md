@@ -70,7 +70,7 @@ https://github.com/user-attachments/assets/be99d4c1-dc09-4616-8fba-06cb959c84c8
 
 ```bash
 # 克隆项目
-git clone https://github.com/Stonewuu/ai-fusion-video.git
+git clone https://github.com/kegeai888/ai-fusion-video-webUI.git
 cd ai-fusion-video
 
 # 可选：复制并修改环境变量
@@ -152,7 +152,7 @@ AI 模型可在系统设置页面动态管理，支持以下提供商：
 
 ## ⭐ Star 趋势
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Stonewuu/ai-fusion-video&type=Date)](https://star-history.com/#Stonewuu/ai-fusion-video&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=kegeai888/ai-fusion-video-webUI&type=Date)](https://star-history.com/#kegeai888/ai-fusion-video-webUI&Date)
 
 
 ## 🙏 致谢

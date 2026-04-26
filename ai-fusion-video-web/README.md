@@ -22,9 +22,9 @@ pnpm dev
 
 默认访问地址：<http://localhost:3000>
 
-前端默认请求后端地址：<http://localhost:18080>
+前端默认请求后端地址：`/api`（通过 Nginx 反向代理到后端）。
 
-如需覆盖后端地址，可设置环境变量：
+本地直接联调后端时，如需覆盖后端地址，可设置环境变量：
 
 ```bash
 NEXT_PUBLIC_API_BASE_URL=http://localhost:18080
